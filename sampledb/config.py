@@ -193,65 +193,82 @@ def is_label_paper_formats_valid() -> bool:
     """check if paper formats from LABEL_PAPER_FORMATS are valid"""
 
     if not isinstance(LABEL_PAPER_FORMATS, list):
-        print(ansi_color('LABEL_PAPER_FORMATS: Must be a list of dictionaries.\n', color=31))
+        print(ansi_color(
+            'LABEL_PAPER_FORMATS: Must be a list of dictionaries.\n', color=31))
         return False
     is_valid = True
     for i, format_definition in enumerate(LABEL_PAPER_FORMATS, start=1):
         if not isinstance(format_definition, dict):
-            print(ansi_color('LABEL_PAPER_FORMATS: Must be a list of dictionaries.\n', color=31))
+            print(ansi_color(
+                'LABEL_PAPER_FORMATS: Must be a list of dictionaries.\n', color=31))
             return False
         str_fields = ['format_name']
-        int_fields = ['labels_in_row', 'labels_in_col', 'qr_code_width', 'paper_format']
-        float_fields = ['label_width', 'label_height', 'margin_horizontal', 'margin_vertical']
+        int_fields = ['labels_in_row', 'labels_in_col',
+                      'qr_code_width', 'paper_format']
+        float_fields = ['label_width', 'label_height',
+                        'margin_horizontal', 'margin_vertical']
         for key, value in format_definition.items():
             if key in int_fields:
                 int_fields.remove(key)
                 if not isinstance(value, int):
                     is_valid = False
-                    print(ansi_color(f'LABEL_PAPER_FORMATS: {key} must be a whole number in format definition {i}.\n', color=31))
+                    print(ansi_color(
+                        f'LABEL_PAPER_FORMATS: {key} must be a whole number in format definition {i}.\n', color=31))
                 if key == 'qr_code_width':
                     if value < 4:
                         format_definition['qr_code_width'] = 4
-                        print(ansi_color(f'LABEL_PAPER_FORMATS: {key} in format definition {i} is less than 4. Value set to 4.\n', color=33))
+                        print(ansi_color(
+                            f'LABEL_PAPER_FORMATS: {key} in format definition {i} is less than 4. Value set to 4.\n', color=33))
                     elif value > 150:
                         format_definition['qr_code_width'] = 150
-                        print(ansi_color(f'LABEL_PAPER_FORMATS: {key} in format definition {i} is greater than 150. Value set to 150.\n', color=33))
+                        print(ansi_color(
+                            f'LABEL_PAPER_FORMATS: {key} in format definition {i} is greater than 150. Value set to 150.\n', color=33))
                 elif value < 0:
                     is_valid = False
-                    print(ansi_color(f'LABEL_PAPER_FORMATS: {key} must be greater than 0 in format definition {i}.\n', color=31))
+                    print(ansi_color(
+                        f'LABEL_PAPER_FORMATS: {key} must be greater than 0 in format definition {i}.\n', color=31))
             elif key in float_fields:
                 float_fields.remove(key)
                 if not isinstance(value, (int, float)):
                     is_valid = False
-                    print(ansi_color(f'LABEL_PAPER_FORMATS: {key} must be a number in format definition {i}.\n', color=31))
+                    print(ansi_color(
+                        f'LABEL_PAPER_FORMATS: {key} must be a number in format definition {i}.\n', color=31))
                 if value < 0:
                     is_valid = False
-                    print(ansi_color(f'LABEL_PAPER_FORMATS: {key} must be greater than 0 in format definition {i}.\n', color=31))
+                    print(ansi_color(
+                        f'LABEL_PAPER_FORMATS: {key} must be greater than 0 in format definition {i}.\n', color=31))
             elif key in str_fields:
                 str_fields.remove(key)
                 if not isinstance(value, str) and not isinstance(value, dict):
                     is_valid = False
-                    print(ansi_color(f'LABEL_PAPER_FORMATS: {key} must be a string in format definition {i}.\n', color=31))
+                    print(ansi_color(
+                        f'LABEL_PAPER_FORMATS: {key} must be a string in format definition {i}.\n', color=31))
             else:
-                print(ansi_color(f'LABEL_PAPER_FORMATS: {key} is an Unknown key in format definition {i}.\n', color=33))
+                print(ansi_color(
+                    f'LABEL_PAPER_FORMATS: {key} is an Unknown key in format definition {i}.\n', color=33))
         if not is_valid:
             return False
 
         if len(str_fields) > 0 or len(int_fields) > 0 or len(float_fields) > 0:
             for key in str_fields + int_fields + float_fields:
-                print(ansi_color(f'LABEL_PAPER_FORMATS: {key} is missing in format definition {i}.\n', color=31))
+                print(ansi_color(
+                    f'LABEL_PAPER_FORMATS: {key} is missing in format definition {i}.\n', color=31))
             return False
 
         if format_definition['paper_format'] < 0 or format_definition['paper_format'] >= len(PAGE_SIZE_KEYS):
-            print(ansi_color(f'LABEL_PAPER_FORMATS: invalid paper_format in format definition {i}.\n', color=31))
+            print(ansi_color(
+                f'LABEL_PAPER_FORMATS: invalid paper_format in format definition {i}.\n', color=31))
             return False
         page_size = PAGE_SIZES[PAGE_SIZE_KEYS[format_definition['paper_format']]]
         page_width = page_size[0]
         page_height = page_size[1]
-        used_page_width = format_definition['labels_in_row'] * format_definition['label_width'] + (format_definition['labels_in_row'] - 1) * format_definition['margin_horizontal']
-        used_page_height = format_definition['labels_in_col'] * format_definition['label_height'] + (format_definition['labels_in_col'] - 1) * format_definition['margin_vertical']
+        used_page_width = format_definition['labels_in_row'] * format_definition['label_width'] + (
+            format_definition['labels_in_row'] - 1) * format_definition['margin_horizontal']
+        used_page_height = format_definition['labels_in_col'] * format_definition['label_height'] + (
+            format_definition['labels_in_col'] - 1) * format_definition['margin_vertical']
         if page_width < used_page_width or page_height < used_page_height:
-            print(ansi_color(f'LABEL_PAPER_FORMATS: page is too small for labels in format definition {i}.\n', color=31))
+            print(ansi_color(
+                f'LABEL_PAPER_FORMATS: page is too small for labels in format definition {i}.\n', color=31))
             return False
 
     return is_valid
@@ -264,16 +281,21 @@ def is_default_notification_modes_valid() -> bool:
     if DEFAULT_NOTIFICATION_MODES is None:
         return True
     if not isinstance(DEFAULT_NOTIFICATION_MODES, dict):
-        print(ansi_color(f'DEFAULT_NOTIFICATION_MODES must be dict, but got {type(DEFAULT_NOTIFICATION_MODES)}.\n', color=31))
+        print(ansi_color(
+            f'DEFAULT_NOTIFICATION_MODES must be dict, but got {type(DEFAULT_NOTIFICATION_MODES)}.\n', color=31))
         return False
     for key, value in DEFAULT_NOTIFICATION_MODES.items():
-        valid_keys = [notification_type.name.upper() for notification_type in NotificationType] + ["DEFAULT"]
+        valid_keys = [notification_type.name.upper()
+                      for notification_type in NotificationType] + ["DEFAULT"]
         if key not in valid_keys:
-            print(ansi_color(f'DEFAULT_NOTIFICATION_MODES keys must be one of {valid_keys!r}, but got {key!r}.\n', color=31))
+            print(ansi_color(
+                f'DEFAULT_NOTIFICATION_MODES keys must be one of {valid_keys!r}, but got {key!r}.\n', color=31))
             return False
-        valid_modes = [notification_mode.name.upper() for notification_mode in NotificationMode]
+        valid_modes = [notification_mode.name.upper()
+                       for notification_mode in NotificationMode]
         if value not in valid_modes:
-            print(ansi_color(f'DEFAULT_NOTIFICATION_MODES values must be one of {valid_modes!r}, but got {value!r}.\n', color=31))
+            print(ansi_color(
+                f'DEFAULT_NOTIFICATION_MODES values must be one of {valid_modes!r}, but got {value!r}.\n', color=31))
             return False
     return True
 
@@ -292,82 +314,102 @@ def parse_and_convert_external_links(
     ]:
         config[config_name] = {}
     if type(config['EXTERNAL_LINKS']) is not list:
-        print(ansi_color(f'EXTERNAL_LINKS must be list, but got {EXTERNAL_LINKS!r}.\n', color=31))
+        print(ansi_color(
+            f'EXTERNAL_LINKS must be list, but got {EXTERNAL_LINKS!r}.\n', color=31))
         return False
     for entry_index, entry in enumerate(config['EXTERNAL_LINKS']):
         if type(entry) is not dict:
-            print(ansi_color(f'EXTERNAL_LINKS entries must be dicts, but got {entry!r} for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS entries must be dicts, but got {entry!r} for entry #{entry_index}.\n', color=31))
             return False
         if any(k not in {'label', 'icon', 'id_placeholder', 'applies_to_placeholder', 'links', 'applies_to'} for k in entry):
-            print(ansi_color(f'EXTERNAL_LINKS entries may only contain label, icon, id_placeholder, applies_to_placeholder, links and applies_to, but got {entry!r} for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS entries may only contain label, icon, id_placeholder, applies_to_placeholder, links and applies_to, but got {entry!r} for entry #{entry_index}.\n', color=31))
             return False
         if 'label' in entry:
             if type(entry['label']) is not str and type(entry['label']) is not dict:
-                print(ansi_color(f'EXTERNAL_LINKS label must be string or dict, but got {entry['label']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS label must be string or dict, but got {entry['label']!r} for entry #{entry_index}.\n', color=31))
                 return False
             if type(entry['label']) is str:
                 entry['label'] = {'en': entry['label']}
             if not entry['label'] or (type(entry['label']) is dict and any(not v for v in entry['label'].values())):
-                print(ansi_color(f'EXTERNAL_LINKS labels must not be empty for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS labels must not be empty for entry #{entry_index}.\n', color=31))
                 return False
             if type(entry['label']) is dict and any(type(k) is not str or type(v) is not str for k, v in entry['label'].items()):
-                print(ansi_color(f'EXTERNAL_LINKS labels must be string or a dict mapping strings to strings for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS labels must be string or a dict mapping strings to strings for entry #{entry_index}.\n', color=31))
                 return False
             if "en" not in entry['label']:
-                print(ansi_color(f'EXTERNAL_LINKS labels must be a string or a dict containing at least the key "en" for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS labels must be a string or a dict containing at least the key "en" for entry #{entry_index}.\n', color=31))
                 return False
         else:
             entry['label'] = {'en': 'Links'}
         if 'icon' in entry:
             if type(entry['icon']) is not str or not entry['icon']:
-                print(ansi_color(f'EXTERNAL_LINKS icon must be non-empty string, but got {entry['icon']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS icon must be non-empty string, but got {entry['icon']!r} for entry #{entry_index}.\n', color=31))
                 return False
         else:
             entry['icon'] = 'fa-external-link'
         if 'id_placeholder' in entry:
             if type(entry['id_placeholder']) is not str or not entry['id_placeholder']:
-                print(ansi_color(f'EXTERNAL_LINKS id_placeholder must be non-empty string, but got {entry['id_placeholder']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS id_placeholder must be non-empty string, but got {entry['id_placeholder']!r} for entry #{entry_index}.\n', color=31))
                 return False
         else:
             entry['id_placeholder'] = '<ID>'
         if 'applies_to_placeholder' in entry:
             if type(entry['applies_to_placeholder']) is not str or not entry['applies_to_placeholder']:
-                print(ansi_color(f'EXTERNAL_LINKS applies_to_placeholder must be non-empty string, but got {entry['applies_to_placeholder']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS applies_to_placeholder must be non-empty string, but got {entry['applies_to_placeholder']!r} for entry #{entry_index}.\n', color=31))
                 return False
         else:
             entry['applies_to_placeholder'] = '<A>'
         if 'links' not in entry:
-            print(ansi_color(f'EXTERNAL_LINKS entries must contain links for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS entries must contain links for entry #{entry_index}.\n', color=31))
             return False
         if type(entry['links']) is not list:
-            print(ansi_color(f'EXTERNAL_LINKS links must be list, but got {entry['links']!r} for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS links must be list, but got {entry['links']!r} for entry #{entry_index}.\n', color=31))
             return False
         if not entry['links']:
-            print(ansi_color(f'EXTERNAL_LINKS links must not be empty for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS links must not be empty for entry #{entry_index}.\n', color=31))
             return False
         for link_dict in entry['links']:
             if type(link_dict) is not dict:
-                print(ansi_color(f'EXTERNAL_LINKS links must contain dicts, but got {link_dict!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS links must contain dicts, but got {link_dict!r} for entry #{entry_index}.\n', color=31))
                 return False
             if set(link_dict.keys()) != {'url', 'name'}:
-                print(ansi_color(f'EXTERNAL_LINKS link dicts must contain url and name, but got {link_dict!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS link dicts must contain url and name, but got {link_dict!r} for entry #{entry_index}.\n', color=31))
                 return False
             if type(link_dict['url']) is not str or not link_dict['url']:
-                print(ansi_color(f'EXTERNAL_LINKS link dict urls must be non-empty strings, but got {link_dict['url']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS link dict urls must be non-empty strings, but got {link_dict['url']!r} for entry #{entry_index}.\n', color=31))
                 return False
             if type(link_dict['name']) is not str and type(link_dict['name']) is not dict:
-                print(ansi_color(f'EXTERNAL_LINKS link dict names must strings or dicts, but got {link_dict['name']!r} for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS link dict names must strings or dicts, but got {link_dict['name']!r} for entry #{entry_index}.\n', color=31))
                 return False
             if type(link_dict['name']) is str:
                 link_dict['name'] = {'en': link_dict['name']}
             if not link_dict['name'] or (type(link_dict['name']) is dict and any(not v for v in link_dict['name'].values())):
-                print(ansi_color(f'EXTERNAL_LINKS link dict names must not be empty for entry #{entry_index}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS link dict names must not be empty for entry #{entry_index}.\n', color=31))
                 return False
         if 'applies_to' not in entry:
-            print(ansi_color(f'EXTERNAL_LINKS entries must contain applies_to for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS entries must contain applies_to for entry #{entry_index}.\n', color=31))
             return False
         if type(entry['applies_to']) is not dict:
-            print(ansi_color(f'EXTERNAL_LINKS applies_to must be dict, but got {entry['applies_to']!r} for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS applies_to must be dict, but got {entry['applies_to']!r} for entry #{entry_index}.\n', color=31))
             return False
         config_value_by_applies_to_key = {
             'objects_by_action_id': (config['OBJECT_LINKS_BY_ACTION_ID'], 'object'),
@@ -378,16 +420,20 @@ def parse_and_convert_external_links(
             'basic_groups_by_basic_group_id': (config['BASIC_GROUP_LINKS_BY_BASIC_GROUP_ID'], 'basic_group'),
             'project_groups_by_project_group_id': (config['PROJECT_GROUP_LINKS_BY_PROJECT_GROUP_ID'], 'project_group'),
         }
-        applies_to_unexpected_keys = set(entry['applies_to'].keys()) - set(config_value_by_applies_to_key.keys())
+        applies_to_unexpected_keys = set(
+            entry['applies_to'].keys()) - set(config_value_by_applies_to_key.keys())
         if applies_to_unexpected_keys:
-            print(ansi_color(f'EXTERNAL_LINKS applies_to contains unexpected keys {applies_to_unexpected_keys!r} for entry #{entry_index}.\n', color=31))
+            print(ansi_color(
+                f'EXTERNAL_LINKS applies_to contains unexpected keys {applies_to_unexpected_keys!r} for entry #{entry_index}.\n', color=31))
             return False
         for key, id_list in entry['applies_to'].items():
             if type(id_list) is not list:
-                print(ansi_color(f'EXTERNAL_LINKS applies_to values must be lists for entry #{entry_index} and applies_to key {key}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS applies_to values must be lists for entry #{entry_index} and applies_to key {key}.\n', color=31))
                 return False
             if any(type(v) is not int and v != '*' for v in id_list):
-                print(ansi_color(f'EXTERNAL_LINKS applies_to values must only contain integers or "*" for entry #{entry_index} and applies_to key {key}.\n', color=31))
+                print(ansi_color(
+                    f'EXTERNAL_LINKS applies_to values must only contain integers or "*" for entry #{entry_index} and applies_to key {key}.\n', color=31))
                 return False
             config_value, applies_to_type = config_value_by_applies_to_key[key]
             entry_copy = copy.deepcopy(entry)
@@ -562,7 +608,8 @@ def check_config(
                 file=sys.stderr
             )
         elif can_run:
-            engine = sqlalchemy.create_engine(config['SQLALCHEMY_DATABASE_URI'], **config['SQLALCHEMY_ENGINE_OPTIONS'])
+            engine = sqlalchemy.create_engine(
+                config['SQLALCHEMY_DATABASE_URI'], **config['SQLALCHEMY_ENGINE_OPTIONS'])
             with engine.begin() as connection:
                 user_table_exists = bool(connection.execute(sqlalchemy.text(
                     "SELECT * "
@@ -584,7 +631,8 @@ def check_config(
                 )
             else:
                 admin_username = config.get('ADMIN_USERNAME', 'admin').lower()
-                admin_email = config.get('ADMIN_EMAIL', config['CONTACT_EMAIL']).lower()
+                admin_email = config.get(
+                    'ADMIN_EMAIL', config['CONTACT_EMAIL']).lower()
                 print(
                     f'A new admin user with the username "{admin_username}", the email '
                     f'address "{admin_email}" and the given ADMIN_PASSWORD will be '
@@ -611,7 +659,8 @@ def check_config(
         show_config_info = True
 
     if can_run:
-        engine = sqlalchemy.create_engine(config['SQLALCHEMY_DATABASE_URI'], **config['SQLALCHEMY_ENGINE_OPTIONS'])
+        engine = sqlalchemy.create_engine(
+            config['SQLALCHEMY_DATABASE_URI'], **config['SQLALCHEMY_ENGINE_OPTIONS'])
         with engine.begin() as connection:
             files_table_with_data_exists = bool(connection.execute(sqlalchemy.text(
                 """
@@ -672,7 +721,8 @@ def check_config(
                 can_run = False
                 show_config_info = True
 
-    internal_config['PDFEXPORT_LOGO_WIDTH'] = min(200, max(0, config['PDFEXPORT_LOGO_WIDTH']))
+    internal_config['PDFEXPORT_LOGO_WIDTH'] = min(
+        200, max(0, config['PDFEXPORT_LOGO_WIDTH']))
     if config['PDFEXPORT_LOGO_URL'] is not None:
         logo_url = config['PDFEXPORT_LOGO_URL']
         logo_image: typing.Optional[Image.Image] = None
@@ -735,11 +785,13 @@ def check_config(
                 internal_config['PDFEXPORT_LOGO_ASPECT_RATIO'] = logo_width / logo_height
                 logo_image = logo_image.convert('RGBA')
                 background_image = Image.new('RGBA', logo_image.size, 'white')
-                logo_image = Image.alpha_composite(background_image, logo_image)
+                logo_image = Image.alpha_composite(
+                    background_image, logo_image)
                 logo_file = io.BytesIO()
                 logo_image.save(logo_file, "png")
                 logo_png_data = logo_file.getvalue()
-                logo_data_uri = 'data:image/png;base64,' + base64.b64encode(logo_png_data).decode('utf-8')
+                logo_data_uri = 'data:image/png;base64,' + \
+                    base64.b64encode(logo_png_data).decode('utf-8')
                 internal_config['PDFEXPORT_LOGO_URL'] = logo_data_uri
             except Exception:
                 print(
@@ -914,6 +966,17 @@ MIME_TYPES = {
     '.pdf': 'application/pdf'
 }
 
+DYNAMIC_CHOICES_SOURCES = {
+    'expSessions': {
+        'url': 'http://172.18.0.4:5000/exp-sessions',
+        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+    },
+    "proposals": {
+        'url': 'http://172.18.0.4:5000/proposals',
+        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+    }
+}
+
 # JupyterHub settings
 JUPYTERHUB_NAME = 'JupyterHub'
 JUPYTERHUB_URL = None
@@ -975,7 +1038,8 @@ ENFORCE_SPLIT_NAMES = False
 BUILD_TRANSLATIONS = True
 PYBABEL_PATH = 'pybabel'
 
-EXTRA_USER_FIELDS: typing.Dict[str, typing.Dict[str, typing.Dict[str, str]]] = {}
+EXTRA_USER_FIELDS: typing.Dict[str,
+                               typing.Dict[str, typing.Dict[str, str]]] = {}
 
 SHOW_DOWNTIME_WARNING = False
 SHOW_PREVIEW_WARNING = False
@@ -1066,13 +1130,20 @@ class LinkListConfig(typing.TypedDict):
 
 
 EXTERNAL_LINKS: typing.List[LinkListConfig] = []
-OBJECT_LINKS_BY_ACTION_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-ACTION_LINKS_BY_ACTION_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-INSTRUMENT_LINKS_BY_INSTRUMENT_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-TOPIC_LINKS_BY_TOPIC_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-LOCATION_LINKS_BY_LOCATION_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-BASIC_GROUP_LINKS_BY_BASIC_GROUP_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
-PROJECT_GROUP_LINKS_BY_PROJECT_GROUP_ID: typing.Dict[typing.Union[typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
+OBJECT_LINKS_BY_ACTION_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                    int], typing.List[LinkListConfig]] = {}
+ACTION_LINKS_BY_ACTION_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                    int], typing.List[LinkListConfig]] = {}
+INSTRUMENT_LINKS_BY_INSTRUMENT_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                            int], typing.List[LinkListConfig]] = {}
+TOPIC_LINKS_BY_TOPIC_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                  int], typing.List[LinkListConfig]] = {}
+LOCATION_LINKS_BY_LOCATION_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                        int], typing.List[LinkListConfig]] = {}
+BASIC_GROUP_LINKS_BY_BASIC_GROUP_ID: typing.Dict[typing.Union[typing.Literal['*'],
+                                                              int], typing.List[LinkListConfig]] = {}
+PROJECT_GROUP_LINKS_BY_PROJECT_GROUP_ID: typing.Dict[typing.Union[
+    typing.Literal['*'], int], typing.List[LinkListConfig]] = {}
 
 SORT_REFERENCABLE_OBJECTS = 'id'
 
@@ -1089,13 +1160,16 @@ if SERVICE_IMPRINT and not SERVICE_LEGAL_NOTICE:
 
 # remove trailing slashes from SciCat urls
 if isinstance(SCICAT_API_URL, str) and SCICAT_API_URL.endswith('/'):
-    SCICAT_API_URL = SCICAT_API_URL[:-1]  # pylint: disable=unsubscriptable-object
+    SCICAT_API_URL = SCICAT_API_URL[:-
+                                    1]  # pylint: disable=unsubscriptable-object
 if isinstance(SCICAT_FRONTEND_URL, str) and SCICAT_FRONTEND_URL.endswith('/'):
-    SCICAT_FRONTEND_URL = SCICAT_FRONTEND_URL[:-1]  # pylint: disable=unsubscriptable-object
+    SCICAT_FRONTEND_URL = SCICAT_FRONTEND_URL[:-
+                                              1]  # pylint: disable=unsubscriptable-object
 
 # remove trailing slashes from Download Service url
 if isinstance(DOWNLOAD_SERVICE_URL, str) and DOWNLOAD_SERVICE_URL.endswith('/'):
-    DOWNLOAD_SERVICE_URL = DOWNLOAD_SERVICE_URL[:-1]  # pylint: disable=unsubscriptable-object
+    DOWNLOAD_SERVICE_URL = DOWNLOAD_SERVICE_URL[:-
+                                                1]  # pylint: disable=unsubscriptable-object
 
 if OIDC_ONLY:
     DISABLE_USER_INVITATIONS = True

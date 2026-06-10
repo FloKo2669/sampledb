@@ -20,6 +20,7 @@ from ...logic.action_permissions import get_sorted_actions_for_user
 from ...logic.object_permissions import get_user_object_permissions
 from ...logic.users import get_users
 from ...logic.schemas import generate_placeholder
+from ...logic.schemas.dynamic_choices import resolve_dynamic_choices
 from ...logic.objects import create_object, create_object_batch, update_object
 from ...logic.languages import get_language, get_languages, Language
 from ...logic.components import get_component
@@ -38,14 +39,16 @@ def show_object_form(
         previous_object: typing.Optional[Object] = None,
         should_upgrade_schema: bool = False,
         placeholder_data: typing.Optional[typing.Dict[typing.Sequence[typing.Union[str, int]], typing.Any]] = None,
-        possible_object_id_properties: typing.Optional[typing.Dict[str, typing.Any]] = None,
+        possible_object_id_properties: typing.Optional[typing.Dict[str,
+                                                                   typing.Any]] = None,
         passed_object_ids: typing.Optional[typing.List[int]] = None,
         show_selecting_modal: bool = False
 ) -> FlaskResponseT:
 
     if object is None:
         if action.type is None or action.type.disable_create_objects or action.disable_create_objects or (action.admin_only and not flask_login.current_user.is_admin):
-            flask.flash(_('Creating objects with this action has been disabled.'), 'error')
+            flask.flash(
+                _('Creating objects with this action has been disabled.'), 'error')
             return flask.redirect(flask.url_for('.action', action_id=action.id))
 
     template_arguments: typing.Dict[str, typing.Any] = {
@@ -58,7 +61,8 @@ def show_object_form(
     errors: typing.Dict[str, str] = {}
     form = ObjectForm()
     if flask.request.method != 'GET' and form.validate_on_submit():
-        raw_form_data = {key: flask.request.form.getlist(key) for key in flask.request.form}
+        raw_form_data = {key: flask.request.form.getlist(
+            key) for key in flask.request.form}
         form_data = {k: v[0] for k, v in raw_form_data.items()}
     else:
         raw_form_data = {}
@@ -78,7 +82,8 @@ def show_object_form(
         if action.schema is None or object is None or object.schema is None or object.data is None:
             return flask.abort(400)
         schema = action.schema
-        data, upgrade_warnings = logic.schemas.convert_to_schema(object.data, object.schema, action.schema)
+        data, upgrade_warnings = logic.schemas.convert_to_schema(
+            object.data, object.schema, action.schema)
         for upgrade_warning in upgrade_warnings:
             flask.flash(upgrade_warning, 'warning')
         template_arguments.update({
@@ -101,7 +106,8 @@ def show_object_form(
             if action.schema is None:
                 return flask.abort(400)
             schema = action.schema
-            data, upgrade_warnings = logic.schemas.convert_to_schema(previous_object.data, previous_object.schema, action.schema)
+            data, upgrade_warnings = logic.schemas.convert_to_schema(
+                previous_object.data, previous_object.schema, action.schema)
             for upgrade_warning in upgrade_warnings:
                 flask.flash(upgrade_warning, 'warning')
             template_arguments.update({
@@ -110,7 +116,8 @@ def show_object_form(
             })
         else:
             schema = previous_object.schema
-            data = logic.schemas.copy_data(previous_object.data, previous_object.schema)
+            data = logic.schemas.copy_data(
+                previous_object.data, previous_object.schema)
         template_arguments.update({
             'previous_object_id': previous_object.id,
             'has_grant_for_previous_object': Permissions.GRANT in get_user_object_permissions(user_id=flask_login.current_user.id, object_id=previous_object.id),
@@ -132,7 +139,8 @@ def show_object_form(
         })
 
     if passed_object_ids:
-        has_grant_for_first_passed_object = Permissions.GRANT in get_user_object_permissions(user_id=flask_login.current_user.id, object_id=passed_object_ids[0])
+        has_grant_for_first_passed_object = Permissions.GRANT in get_user_object_permissions(
+            user_id=flask_login.current_user.id, object_id=passed_object_ids[0])
     else:
         has_grant_for_first_passed_object = False
     template_arguments.update({
@@ -144,6 +152,12 @@ def show_object_form(
     if not isinstance(schema, dict):
         return flask.abort(400)
 
+    # Resolve dynamic choices from external sources based on user context
+    schema = resolve_dynamic_choices(
+        schema=schema,
+        user_id=flask_login.current_user.id
+    )
+
     template_arguments.update({
         'data': data,
         'schema': schema,
@@ -154,7 +168,8 @@ def show_object_form(
         if not flask.current_app.config['DISABLE_INSTRUMENTS'] and action is not None and action.instrument is not None and flask_login.current_user in action.instrument.responsible_users:
             may_create_log_entry = True
             create_log_entry_default = action.instrument.create_log_entry_default
-            instrument_log_categories = logic.instrument_log_entries.get_instrument_log_categories(action.instrument.id)
+            instrument_log_categories = logic.instrument_log_entries.get_instrument_log_categories(
+                action.instrument.id)
         else:
             may_create_log_entry = False
             create_log_entry_default = False
@@ -169,7 +184,8 @@ def show_object_form(
         'form_data': form_data,
     })
 
-    template_arguments.update(get_object_form_template_kwargs(object.id if object is not None else None))
+    template_arguments.update(get_object_form_template_kwargs(
+        object.id if object is not None else None))
 
     actual_file_names_by_id = {
         file_id: file_names[0]
@@ -178,21 +194,26 @@ def show_object_form(
     context_id = template_arguments['context_id']
 
     if "action_submit" in form_data:
-        batch_names = _handle_batch_names(schema, form_data, raw_form_data, errors)
-        object_data, parsing_errors = parse_form_data(raw_form_data, schema, file_names_by_id=actual_file_names_by_id, previous_data=data)
+        batch_names = _handle_batch_names(
+            schema, form_data, raw_form_data, errors)
+        object_data, parsing_errors = parse_form_data(
+            raw_form_data, schema, file_names_by_id=actual_file_names_by_id, previous_data=data)
         errors.update(parsing_errors)
         if batch_names is not None:
             for key in errors:
                 if key.startswith('object__name__'):
-                    errors[key] += _(' Batch numbering resulted in name: %(name)s', name=f'"{batch_names[0]["en"]}"' if len(batch_names[0]) == 1 else ', '.join([f'"{name}" ({get_translated_text(logic.languages.get_language_by_lang_code(lang_code).names)})' for lang_code, name in batch_names[0].items()]))
+                    errors[key] += _(' Batch numbering resulted in name: %(name)s', name=f'"{batch_names[0]["en"]}"' if len(batch_names[0]) == 1 else ', '.join(
+                        [f'"{name}" ({get_translated_text(logic.languages.get_language_by_lang_code(lang_code).names)})' for lang_code, name in batch_names[0].items()]))
         if object_data is not None and not errors and batch_names is not None:
             data_sequence = []
-            object_data = typing.cast(typing.Dict[str, typing.Any], object_data)
+            object_data = typing.cast(
+                typing.Dict[str, typing.Any], object_data)
             for name in batch_names:
                 object_data['name']['text'] = name
                 data_sequence.append(deepcopy(object_data))
                 try:
-                    logic.schemas.validate(data_sequence[-1], schema, strict=True, file_names_by_id=actual_file_names_by_id)
+                    logic.schemas.validate(
+                        data_sequence[-1], schema, strict=True, file_names_by_id=actual_file_names_by_id)
                 except logic.errors.ValidationError as e:
                     batch_error_message = _(
                         '"%(error)s" for object name %(name)s',
@@ -216,20 +237,27 @@ def show_object_form(
             'errors_by_title': get_errors_by_title(errors, schema)
         })
         if object_data is not None and not errors:
-            object_data = typing.cast(typing.Dict[str, typing.Any], object_data)
+            object_data = typing.cast(
+                typing.Dict[str, typing.Any], object_data)
             for markdown in logic.markdown_to_html.get_markdown_from_object_data(object_data):
-                markdown_as_html = logic.markdown_to_html.markdown_to_safe_html(markdown)
-                logic.markdown_images.mark_referenced_markdown_images_as_permanent(markdown_as_html)
-            referenced_temporary_file_ids = sorted(logic.temporary_files.get_referenced_temporary_file_ids(object_data))
+                markdown_as_html = logic.markdown_to_html.markdown_to_safe_html(
+                    markdown)
+                logic.markdown_images.mark_referenced_markdown_images_as_permanent(
+                    markdown_as_html)
+            referenced_temporary_file_ids = sorted(
+                logic.temporary_files.get_referenced_temporary_file_ids(object_data))
             if object is None:
-                copy_permissions_object_id, permissions_for_group_id, permissions_for_project_id = _parse_permissions_ids(form_data)
-                read_permissions_to_all_users = form_data.get('all_users_read_permissions') == '1'
+                copy_permissions_object_id, permissions_for_group_id, permissions_for_project_id = _parse_permissions_ids(
+                    form_data)
+                read_permissions_to_all_users = form_data.get(
+                    'all_users_read_permissions') == '1'
                 permanent_file_names_by_id = {}
                 permanent_file_map = {}
                 for ind, file_id in enumerate(referenced_temporary_file_ids):
                     permanent_file_map[file_id] = ind
                     permanent_file_names_by_id[ind] = actual_file_names_by_id[-file_id]
-                logic.temporary_files.replace_file_reference_ids(object_data, permanent_file_map)
+                logic.temporary_files.replace_file_reference_ids(
+                    object_data, permanent_file_map)
                 if batch_names is not None:
                     objects = create_object_batch(
                         action_id=action.id,
@@ -239,7 +267,8 @@ def show_object_form(
                         permissions_for_group_id=permissions_for_group_id,
                         permissions_for_project_id=permissions_for_project_id,
                         permissions_for_all_users=Permissions.READ if read_permissions_to_all_users else None,
-                        data_validator_arguments={'file_names_by_id': permanent_file_names_by_id},
+                        data_validator_arguments={
+                            'file_names_by_id': permanent_file_names_by_id},
                         validate_data=False     # validated on data_sequence creation
                     )
                 else:
@@ -253,7 +282,8 @@ def show_object_form(
                         permissions_for_group_id=permissions_for_group_id,
                         permissions_for_project_id=permissions_for_project_id,
                         permissions_for_all_users=Permissions.READ if read_permissions_to_all_users else None,
-                        data_validator_arguments={'file_names_by_id': permanent_file_names_by_id}
+                        data_validator_arguments={
+                            'file_names_by_id': permanent_file_names_by_id}
                     )]
                 object_ids = [object.id for object in objects]
                 if action.instrument_id and not flask.current_app.config['DISABLE_INSTRUMENTS'] and may_create_log_entry:
@@ -276,21 +306,30 @@ def show_object_form(
                                 instrument_log_entry_id=log_entry.id,
                                 object_id=object_id
                             )
-                logic.temporary_files.copy_temporary_files(file_ids=referenced_temporary_file_ids, context_id=context_id, user_id=flask_login.current_user.id, object_ids=object_ids)
-                logic.temporary_files.delete_temporary_files(context_id=context_id)
+                logic.temporary_files.copy_temporary_files(
+                    file_ids=referenced_temporary_file_ids, context_id=context_id, user_id=flask_login.current_user.id, object_ids=object_ids)
+                logic.temporary_files.delete_temporary_files(
+                    context_id=context_id)
                 if len(object_ids) == 1:
-                    flask.flash(_('The object was created successfully.'), 'success')
+                    flask.flash(
+                        _('The object was created successfully.'), 'success')
                     return flask.redirect(flask.url_for('.object', object_id=object_ids[0]))
                 else:
-                    flask.flash(_('The objects were created successfully.'), 'success')
+                    flask.flash(
+                        _('The objects were created successfully.'), 'success')
                     return flask.redirect(flask.url_for('.objects', ids=','.join([str(object_id) for object_id in object_ids])))
             else:
                 if object_data != object.data or schema != object.schema:
-                    actual_temporary_file_id_map = logic.temporary_files.copy_temporary_files(file_ids=referenced_temporary_file_ids, context_id=context_id, user_id=flask_login.current_user.id, object_ids=[object.id])
-                    logic.temporary_files.delete_temporary_files(context_id=context_id)
-                    logic.temporary_files.replace_file_reference_ids(object_data, actual_temporary_file_id_map)
-                    update_object(object_id=object.id, user_id=flask_login.current_user.id, data=object_data, schema=schema)
-                    flask.flash(_('The object was updated successfully.'), 'success')
+                    actual_temporary_file_id_map = logic.temporary_files.copy_temporary_files(
+                        file_ids=referenced_temporary_file_ids, context_id=context_id, user_id=flask_login.current_user.id, object_ids=[object.id])
+                    logic.temporary_files.delete_temporary_files(
+                        context_id=context_id)
+                    logic.temporary_files.replace_file_reference_ids(
+                        object_data, actual_temporary_file_id_map)
+                    update_object(
+                        object_id=object.id, user_id=flask_login.current_user.id, data=object_data, schema=schema)
+                    flask.flash(
+                        _('The object was updated successfully.'), 'success')
                 return flask.redirect(flask.url_for('.object', object_id=object.id))
 
     _update_recipes_for_input(schema)
@@ -298,7 +337,8 @@ def show_object_form(
     if object is None:
         # alternatives to default permissions
         user_groups = logic.groups.get_user_groups(flask_login.current_user.id)
-        user_projects = logic.projects.get_user_projects(flask_login.current_user.id, include_groups=True)
+        user_projects = logic.projects.get_user_projects(
+            flask_login.current_user.id, include_groups=True)
         template_arguments.update({
             'can_copy_permissions': True,
             'user_groups': user_groups,
@@ -329,7 +369,8 @@ def _apply_placeholder_data(
 ) -> None:
     for path, value in placeholder_data.items():
         try:
-            sub_data: typing.Optional[typing.Union[typing.List[typing.Any], typing.Dict[str, typing.Any]]] = data
+            sub_data: typing.Optional[typing.Union[typing.List[typing.Any],
+                                                   typing.Dict[str, typing.Any]]] = data
             for step in path[:-1]:
                 if isinstance(sub_data, list) and isinstance(step, int):
                     sub_data = sub_data[step]
@@ -358,20 +399,25 @@ def _parse_permissions_ids(
     :return: the object, basic group and project group IDs as a tuple
     """
     if form_data.get('permissions_method') == 'copy_permissions':
-        copy_permissions_object_id_str = form_data.get('copy_permissions_object_id')
+        copy_permissions_object_id_str = form_data.get(
+            'copy_permissions_object_id')
         if copy_permissions_object_id_str:
             try:
-                copy_permissions_object_id = int(copy_permissions_object_id_str)
+                copy_permissions_object_id = int(
+                    copy_permissions_object_id_str)
                 if Permissions.READ in get_user_object_permissions(copy_permissions_object_id, flask_login.current_user.id):
                     return copy_permissions_object_id, None, None
             except Exception:
                 pass
-            flask.flash(_("Unable to copy permissions. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("Unable to copy permissions. Default permissions will be applied."), 'error')
         else:
-            flask.flash(_("No object selected. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("No object selected. Default permissions will be applied."), 'error')
         return None, None, None
     if form_data.get('permissions_method') == 'permissions_for_group':
-        permissions_for_group_id_str = form_data.get('permissions_for_group_group_id')
+        permissions_for_group_id_str = form_data.get(
+            'permissions_for_group_group_id')
         if permissions_for_group_id_str:
             try:
                 permissions_for_group_id = int(permissions_for_group_id_str)
@@ -379,22 +425,28 @@ def _parse_permissions_ids(
                     return None, permissions_for_group_id, None
             except Exception:
                 pass
-            flask.flash(_("Unable to grant permissions to basic group. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("Unable to grant permissions to basic group. Default permissions will be applied."), 'error')
         else:
-            flask.flash(_("No basic group selected. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("No basic group selected. Default permissions will be applied."), 'error')
         return None, None, None
     if form_data.get('permissions_method') == 'permissions_for_project':
-        permissions_for_project_id_str = form_data.get('permissions_for_project_project_id')
+        permissions_for_project_id_str = form_data.get(
+            'permissions_for_project_project_id')
         if permissions_for_project_id_str:
             try:
-                permissions_for_project_id = int(permissions_for_project_id_str)
+                permissions_for_project_id = int(
+                    permissions_for_project_id_str)
                 if flask_login.current_user.id in logic.projects.get_project_member_user_ids_and_permissions(permissions_for_project_id, include_groups=True):
                     return None, None, permissions_for_project_id
             except Exception:
                 pass
-            flask.flash(_("Unable to grant permissions to project group. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("Unable to grant permissions to project group. Default permissions will be applied."), 'error')
         else:
-            flask.flash(_("No project group selected. Default permissions will be applied."), 'error')
+            flask.flash(
+                _("No project group selected. Default permissions will be applied."), 'error')
         return None, None, None
     return None, None, None
 
@@ -420,7 +472,8 @@ def _handle_batch_names(
     # parse the number of objects in the batch
     try:
         # the form allows notations like '1.2e1' for '12', however Python can only parse these as floats
-        num_objects_in_batch_float = float(form_data['input_num_batch_objects'])
+        num_objects_in_batch_float = float(
+            form_data['input_num_batch_objects'])
         if num_objects_in_batch_float == int(num_objects_in_batch_float):
             num_objects_in_batch = int(num_objects_in_batch_float)
         else:
@@ -430,10 +483,12 @@ def _handle_batch_names(
     if num_objects_in_batch is not None:
         form_data['input_num_batch_objects'] = str(num_objects_in_batch)
     if num_objects_in_batch is None or num_objects_in_batch <= 0:
-        errors['input_num_batch_objects'] = _('The number of objects in batch must be an positive integer.')
+        errors['input_num_batch_objects'] = _(
+            'The number of objects in batch must be an positive integer.')
         return None
     if num_objects_in_batch > flask.current_app.config['MAX_BATCH_SIZE']:
-        errors['input_num_batch_objects'] = _('The maximum number of objects in one batch is %(max_batch_size)s.', max_batch_size=flask.current_app.config['MAX_BATCH_SIZE'])
+        errors['input_num_batch_objects'] = _(
+            'The maximum number of objects in one batch is %(max_batch_size)s.', max_batch_size=flask.current_app.config['MAX_BATCH_SIZE'])
         return None
     # parse the first number
     try:
@@ -446,7 +501,8 @@ def _handle_batch_names(
     except ValueError:
         first_number = None
     if first_number is None:
-        errors['input_first_number_batch'] = _('The first number must be an integer.')
+        errors['input_first_number_batch'] = _(
+            'The first number must be an integer.')
         return None
     form_data['input_first_number_batch'] = str(first_number)
 
@@ -459,9 +515,11 @@ def _handle_batch_names(
         example_name_suffix = ''
     if 'object__name__text' in form_data:
         batch_base_name = {'en': form_data['object__name__text']}
-        raw_form_data['object__name__text'] = [batch_base_name['en'] + example_name_suffix]
+        raw_form_data['object__name__text'] = [
+            batch_base_name['en'] + example_name_suffix]
     else:
-        enabled_languages_raw: typing.Union[str, typing.List[str]] = form_data.get('object__name__text_languages', [])
+        enabled_languages_raw: typing.Union[str, typing.List[str]] = form_data.get(
+            'object__name__text_languages', [])
         if isinstance(enabled_languages_raw, str):
             enabled_languages = [enabled_languages_raw]
         else:
@@ -470,11 +528,14 @@ def _handle_batch_names(
             enabled_languages.append('en')
         batch_base_name = {}
         for language_code in enabled_languages:
-            batch_base_name[language_code] = form_data.get('object__name__text_' + language_code, '')
-            raw_form_data['object__name__text_' + language_code] = [batch_base_name[language_code] + example_name_suffix]
+            batch_base_name[language_code] = form_data.get(
+                'object__name__text_' + language_code, '')
+            raw_form_data['object__name__text_' + language_code] = [
+                batch_base_name[language_code] + example_name_suffix]
     return [
         {
-            language_code: batch_base_name_str + (name_suffix_format.format(i) if name_suffix_format else '')
+            language_code: batch_base_name_str +
+            (name_suffix_format.format(i) if name_suffix_format else '')
             for language_code, batch_base_name_str in batch_base_name.items()
         }
         for i in range(first_number, first_number + num_objects_in_batch)
@@ -496,7 +557,8 @@ def _update_recipes_for_input(schema: typing.Dict[str, typing.Any]) -> None:
                     property_value = recipe['property_values'][property_name]
                     if property_schema['type'] == 'datetime':
                         if property_value:
-                            value = default_format_datetime(property_value['utc_datetime'])
+                            value = default_format_datetime(
+                                property_value['utc_datetime'])
                         else:
                             value = None
                         property_value = {
@@ -507,9 +569,11 @@ def _update_recipes_for_input(schema: typing.Dict[str, typing.Any]) -> None:
                         if property_value:
                             units = property_value['units']
                             if units in ['min', 'h']:
-                                value = format_time(property_value['magnitude_in_base_units'], units)
+                                value = format_time(
+                                    property_value['magnitude_in_base_units'], units)
                             else:
-                                value = custom_format_number(property_value['magnitude'])
+                                value = custom_format_number(
+                                    property_value['magnitude'])
                         else:
                             units = None
                             value = None
@@ -548,7 +612,8 @@ def _update_recipes_for_input(schema: typing.Dict[str, typing.Any]) -> None:
                             'value': property_value['value'],
                             'type': 'bool'
                         }
-                    property_value['title'] = get_translated_text(property_schema['title'])
+                    property_value['title'] = get_translated_text(
+                        property_schema['title'])
                     recipe['property_values'][property_name] = property_value
         for property_schema in schema['properties'].values():
             _update_recipes_for_input(property_schema)
@@ -585,7 +650,8 @@ def _get_sub_data_and_schema(data: typing.Dict[str, typing.Any], schema: typing.
 
 def _apply_action_to_form_data(action: str, form_data: typing.Dict[str, typing.Any]) -> typing.Dict[str, typing.Any]:
     new_form_data = form_data
-    action_id_prefix, action_index_str, action_type = action[len('action_'):].rsplit('__', 2)
+    action_id_prefix, action_index_str, action_type = action[len(
+        'action_'):].rsplit('__', 2)
     if action_type == 'delete':
         deleted_item_index = int(action_index_str)
         parent_id_prefix = action_id_prefix
@@ -594,12 +660,14 @@ def _apply_action_to_form_data(action: str, form_data: typing.Dict[str, typing.A
             if not name.startswith(parent_id_prefix + '__') or '__' not in name[len(parent_id_prefix) + 2:]:
                 new_form_data[name] = form_data[name]
             else:
-                item_index_str, id_suffix = name[len(parent_id_prefix) + 2:].split('__', 1)
+                item_index_str, id_suffix = name[len(
+                    parent_id_prefix) + 2:].split('__', 1)
                 item_index = int(item_index_str)
                 if item_index < deleted_item_index:
                     new_form_data[name] = form_data[name]
                 if item_index > deleted_item_index:
-                    new_name = parent_id_prefix + '__' + str(item_index - 1) + '__' + id_suffix
+                    new_name = parent_id_prefix + '__' + \
+                        str(item_index - 1) + '__' + id_suffix
                     new_form_data[new_name] = form_data[name]
     return new_form_data
 
@@ -620,7 +688,8 @@ def get_object_form_template_kwargs(object_id: typing.Optional[int]) -> typing.D
         if action_type.fed_id is not None and action_type.fed_id < 0
     }
     action_type_id_by_action_id = {
-        action_id: fed_action_type_id_map.get(action_type_id, action_type_id) if action_type_id is not None else None
+        action_id: fed_action_type_id_map.get(
+            action_type_id, action_type_id) if action_type_id is not None else None
         for action_id, action_type_id in logic.actions.get_action_type_ids_for_action_ids(None).items()
     }
     template_kwargs.update({
@@ -630,24 +699,29 @@ def get_object_form_template_kwargs(object_id: typing.Optional[int]) -> typing.D
     })
 
     # temporary file upload for file fields
-    context_id_serializer = itsdangerous.URLSafeTimedSerializer(flask.current_app.config['SECRET_KEY'], salt='temporary-file-upload')
+    context_id_serializer = itsdangerous.URLSafeTimedSerializer(
+        flask.current_app.config['SECRET_KEY'], salt='temporary-file-upload')
     if 'context_id_token' in flask.request.form:
         context_id_token = flask.request.form.get('context_id_token', '')
         try:
-            user_id, context_id = context_id_serializer.loads(context_id_token, max_age=flask.current_app.config['TEMPORARY_FILE_TIME_LIMIT'])
+            user_id, context_id = context_id_serializer.loads(
+                context_id_token, max_age=flask.current_app.config['TEMPORARY_FILE_TIME_LIMIT'])
         except itsdangerous.BadSignature:
             return flask.abort(400)
         if user_id != flask_login.current_user.id:
             return flask.abort(400)
     else:
         context_id = secrets.token_hex(32)
-        context_id_token = context_id_serializer.dumps((flask_login.current_user.id, context_id))
+        context_id_token = context_id_serializer.dumps(
+            (flask_login.current_user.id, context_id))
 
     if object_id is not None:
-        file_names_by_id = logic.files.get_file_names_by_id_for_object(object_id)
+        file_names_by_id = logic.files.get_file_names_by_id_for_object(
+            object_id)
     else:
         file_names_by_id = {}
-    temporary_files = logic.temporary_files.get_files_for_context_id(context_id=context_id)
+    temporary_files = logic.temporary_files.get_files_for_context_id(
+        context_id=context_id)
     for temporary_file in temporary_files:
         file_names_by_id[-temporary_file.id] = temporary_file.file_name, temporary_file.file_name
 
@@ -670,7 +744,8 @@ def get_object_form_template_kwargs(object_id: typing.Optional[int]) -> typing.D
     })
 
     # users
-    users = get_users(exclude_hidden=not flask_login.current_user.is_admin or not flask_login.current_user.settings['SHOW_HIDDEN_USERS_AS_ADMIN'])
+    users = get_users(
+        exclude_hidden=not flask_login.current_user.is_admin or not flask_login.current_user.settings['SHOW_HIDDEN_USERS_AS_ADMIN'])
     users.sort(key=lambda user: user.id)
     template_kwargs.update({
         'users': users,
@@ -713,18 +788,21 @@ def get_errors_by_title(
         if name.startswith('object__') and name.endswith('__hidden') and message.startswith('missing required property "'):
             parent_property_path = name.split('__')[1:-1]
             property_name = message.split('"')[1]
-            missing_required_fields[tuple(parent_property_path + [property_name])] = (name, message)
+            missing_required_fields[tuple(
+                parent_property_path + [property_name])] = (name, message)
         if name.startswith('object__') and name.endswith('__hidden') and message.startswith('invalid type (at '):
             parent_property_path = name.split('__')[1:-1]
             property_name = message.split('(at ')[1].split(')')[0]
-            invalid_type_entries[tuple(parent_property_path + [property_name])] = (name, message)
+            invalid_type_entries[tuple(
+                parent_property_path + [property_name])] = (name, message)
     ignorable_errors = set()
     for name, message in errors.items():
         if name.startswith('object__'):
             property_path = tuple(name.split('__')[1:-1])
             for potential_ignorable_errors in (missing_required_fields, invalid_type_entries):
                 if tuple(property_path) in potential_ignorable_errors:
-                    ignorable_errors.add(potential_ignorable_errors[property_path])
+                    ignorable_errors.add(
+                        potential_ignorable_errors[property_path])
 
     # construct title -> error messages dict
     errors_by_title: typing.Dict[str, typing.Set[str]] = {}

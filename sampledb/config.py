@@ -968,14 +968,16 @@ MIME_TYPES = {
 
 DYNAMIC_CHOICES_SOURCES = {
     'expSessions': {
-        'url': 'http://172.18.0.4:5000/exp-sessions',
+        'url': 'http://flask_app:5000/exp-sessions',
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     },
     "proposals": {
-        'url': 'http://172.18.0.4:5000/proposals',
+        'url': 'http://flask_app:5000/proposals',
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     }
 }
+
+SAMPLETRACKER_API_URL = 'http://flask_app:5000/export'
 
 # JupyterHub settings
 JUPYTERHUB_NAME = 'JupyterHub'

@@ -9,6 +9,14 @@ class ObjectDoesNotExistError(Exception):
     pass
 
 
+class SampleTrackerNotReachableError(Exception):
+    pass
+
+
+class SampleTrackerExportError(Exception):
+    pass
+
+
 class FileDoesNotExistError(Exception):
     pass
 

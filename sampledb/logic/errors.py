@@ -12,6 +12,13 @@ class ObjectDoesNotExistError(Exception):
 class FileDoesNotExistError(Exception):
     pass
 
+class SampleTrackerNotReachableError(Exception):
+    pass
+
+
+class SampleTrackerExportError(Exception):
+    pass
+
 
 class ObjectVersionDoesNotExistError(Exception):
     pass

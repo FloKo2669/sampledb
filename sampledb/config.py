@@ -869,6 +869,7 @@ DYNAMIC_CHOICES_SOURCES = {
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     }
 }
+SAMPLETRACKER_API_URL = 'http://flask_app:5000/export'
 
 # LDAP settings
 LDAP_NAME = None

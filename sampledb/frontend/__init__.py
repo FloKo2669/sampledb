@@ -37,6 +37,7 @@ from . import objects
 from . import projects
 from . import publications
 from . import scicat_export
+from . import sampletracker
 from . import status
 from . import tags
 from . import timezone
@@ -72,6 +73,7 @@ __all__ = [
     'projects',
     'publications',
     'scicat_export',
+    'sampletracker',
     'status',
     'tags',
     'timezone',

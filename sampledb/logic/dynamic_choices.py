@@ -13,8 +13,8 @@ import requests
 from flask import current_app
 from flask_babel import _
 
-from ..users import get_user
-from ..errors import UserDoesNotExistError
+from s.users import get_user
+from .errors import UserDoesNotExistError
 
 logger = logging.getLogger(__name__)
 

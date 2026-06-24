@@ -240,6 +240,10 @@
         </a>
       </div>
     {% endif %}
+    <div class="form-group">
+      <button type="button" class="btn btn-primary" id="button-show-object-sampletracker-modal" data-toggle="modal" data-target="#sampletrackerExportModal" title="{{ _('Export to Sample Tracker.') }}"><i class="fa fa-qrcode" aria-hidden="true"></i> {{ _('Export to Sample Tracker') }}</button>
+    </div>
+    {% include "objects/view/sampletracker_modal.html" %}
     {% if show_dataverse_export %}
       <div class="form-group">
         {% if dataverse_export_task_created %}

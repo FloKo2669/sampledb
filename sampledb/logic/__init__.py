@@ -56,6 +56,7 @@ from . import publications
 from . import rdf
 from . import schemas
 from . import scicat_export
+from . import sampletracker
 from . import security_tokens
 from . import settings
 from . import shares
@@ -131,6 +132,7 @@ __all__ = [
     'rdf',
     'schemas',
     'scicat_export',
+    'sampletracker',
     'security_tokens',
     'settings',
     'shares',

@@ -14,6 +14,7 @@ import flask
 import flask_login
 import itsdangerous
 from flask_babel import _
+from ...frontend.sampletracker import SampleTrackerExportForm
 
 from .. import frontend
 from ... import logic
@@ -38,6 +39,7 @@ from ...logic.components import get_component
 from ...logic.shares import get_shares_for_object
 from ...logic.notebook_templates import get_notebook_templates
 from ...logic.utils import get_translated_text, get_data_and_schema_by_id_path
+from ...logic.dynamic_choices import fetch_dynamic_choices
 from .forms import ObjectForm, CommentForm, FileForm, FileInformationForm, FileHidingForm, ObjectLocationAssignmentForm, ExternalLinkForm, ObjectPublicationForm, GenerateLabelsForm
 from ...utils import object_permissions_required
 from ..utils import generate_qrcode, get_locations_form_data
@@ -249,6 +251,29 @@ def object(object_id: int) -> FlaskResponseT:
     template_kwargs.update({
         "show_scicat_export": show_scicat_export,
         "scicat_url": scicat_url,
+    })
+
+    # sampletracker export modal dynamic choices
+    sampletracker_export_form = SampleTrackerExportForm()
+    try:
+        sampletracker_experiment_choices = fetch_dynamic_choices(
+            source_name='expSessions',
+            user_id=flask_login.current_user.id,
+        )
+    except Exception as e:
+        sampletracker_experiment_choices = [str(e)]
+    try:
+        sampletracker_proposal_choices = fetch_dynamic_choices(
+            source_name='proposals',
+            user_id=flask_login.current_user.id,
+        )
+    except Exception as e:
+        sampletracker_proposal_choices = [str(e)]
+
+    template_kwargs.update({
+        "sampletracker_experiment_choices": sampletracker_experiment_choices,
+        "sampletracker_proposal_choices": sampletracker_proposal_choices,
+         "sampletracker_export_form": sampletracker_export_form,
     })
 
     # download service

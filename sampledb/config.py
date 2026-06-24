@@ -858,6 +858,18 @@ SESSION_COOKIE_SAMESITE = 'Lax'
 # SQLAlchemy settings
 SQLALCHEMY_ENGINE_OPTIONS = {'connect_args': {"options": "-c timezone=utc"}}
 
+# sources for dynamc choices
+DYNAMIC_CHOICES_SOURCES = {
+    'expSessions': {
+        'url': 'http://flask_app:5000/exp-sessions',
+        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+    },
+    "proposals": {
+        'url': 'http://flask_app:5000/proposals',
+        'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
+    }
+}
+
 # LDAP settings
 LDAP_NAME = None
 LDAP_SERVER = None

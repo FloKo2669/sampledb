@@ -254,6 +254,7 @@ def get_migrations() -> typing.List[typing.Tuple[int, str, typing.Callable[[typi
         'webhook_type_add_object_permissions',
         "object_data_to_html_cache_entries_add_show_object_title",
         "logins_use_timestamptz",
+        "object_log_entry_type_add_send_to_sampletracker"
     ]
 
     migrations = []

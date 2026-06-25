@@ -13,6 +13,7 @@ from ..models import Permissions
 from ..logic.object_permissions import get_user_object_permissions
 from ..utils import FlaskResponseT
 from ..logic import errors as logic_errors
+from ..logic.objects import get_object
 
 class SampleTrackerExportForm(FlaskForm):
     proposal = StringField()
@@ -23,7 +24,7 @@ class SampleTrackerExportForm(FlaskForm):
 @flask_login.login_required
 def sampletracker(object_id: int) -> FlaskResponseT:
 
-    
+    object = get_object(object_id)
     if Permissions.READ not in get_user_object_permissions(object_id=object_id, user_id=flask_login.current_user.id):
         return flask.abort(403)
 
@@ -32,7 +33,9 @@ def sampletracker(object_id: int) -> FlaskResponseT:
     if sampletracker_export_form.validate_on_submit():
         try:
             logic.sampletracker.export_object(
-                object_id=object_id,
+                object_id=object.id,
+                version_id=object.version_id,
+                user_id=flask_login.current_user.id,
                 proposal=sampletracker_export_form.proposal.data,
                 experiment_session=sampletracker_export_form.experiment_session.data,
             )

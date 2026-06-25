@@ -1341,6 +1341,11 @@
               {% if 'version_id' in object_log_entry.data %}
                 {% set ns.object_log_entry_view_html = _('<a href="%(view_version_url)s">View&nbsp;Version</a>&nbsp;/&nbsp;<a href="%(view_version_url_with_diff)s">View&nbsp;Changes</a>', view_version_url=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id']),view_version_url_with_diff=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id'], diff='')) %}
               {% endif %}
+          {% elif object_log_entry.type == ObjectLogEntryType.SEND_TO_SAMPLETRACKER %}
+              {% set ns.object_log_entry_message = _('%(user_ref)s sent the object to SampleTracker (Proposal: %(proposal)s, Experiment Session: %(experiment_session)s).', user_ref=user_reference(object_log_entry.user), proposal=object_log_entry.data['proposal'], experiment_session=object_log_entry.data['experiment_session']) %}
+              {% if 'version_id' in object_log_entry.data %}
+                {% set ns.object_log_entry_view_html = _('<a href="%(view_version_url)s">View&nbsp;Version</a>&nbsp;/&nbsp;<a href="%(view_version_url_with_diff)s">View&nbsp;Changes</a>', view_version_url=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id']),view_version_url_with_diff=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id'], diff='')) %}
+              {% endif %}
           {% elif object_log_entry.type == ObjectLogEntryType.RESTORE_OBJECT_VERSION %}
             {% set ns.object_log_entry_message = _('%(user_ref)s restored object <a href="%(version_url)s">version #%(version_id)s</a>.', user_ref=user_reference(object_log_entry.user), version_url=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['restored_version_id']), version_id=object_log_entry.data['restored_version_id']) %}
             {% if 'version_id' in object_log_entry.data %}

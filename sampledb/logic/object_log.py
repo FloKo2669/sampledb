@@ -346,3 +346,15 @@ def import_from_eln_file(user_id: int, object_id: int) -> None:
         user_id=user_id,
         data={}
     )
+
+def send_to_sampletracker(user_id: int, object_id: int, version_id:int, proposal: str, experiment_session: str) -> None:
+    _store_new_log_entry(
+        type=ObjectLogEntryType.SEND_TO_SAMPLETRACKER,
+        object_id=object_id,
+        user_id=user_id,
+        data={
+            'version_id': version_id,
+            'proposal': proposal,
+            'experiment_session': experiment_session
+        }
+    )

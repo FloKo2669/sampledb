@@ -37,6 +37,7 @@ class ObjectLogEntryType(enum.Enum):
     LINK_PROJECT = 13
     UNLINK_PROJECT = 14
     IMPORT_FROM_ELN_FILE = 15
+    SEND_TO_SAMPLETRACKER = 16
 
 
 class ObjectLogEntry(Model):

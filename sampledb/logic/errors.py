@@ -17,7 +17,9 @@ class SampleTrackerNotReachableError(Exception):
 
 
 class SampleTrackerExportError(Exception):
-    pass
+    def __init__(self, status_code: int):
+        self.status_code = status_code
+        super().__init__(f"Export failed with status {status_code}")
 
 
 class ObjectVersionDoesNotExistError(Exception):

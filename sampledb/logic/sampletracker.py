@@ -35,10 +35,10 @@ def export_object(
         r = requests.post(
             url=api_url,
             json=payload,
-            timeout=SAMPLETRACKER_TIMEOUT
+            timeout=SAMPLETRACKER_TIMEOUT,
         )
-    except requests.exceptions.RequestException:
-        raise errors.SampleTrackerExportError()
+    except requests.exceptions.RequestException as e:
+        raise errors.SampleTrackerNotReachableError() from e
 
     if r.status_code not in {200, 201}:
-        raise errors.SampleTrackerExportError()
+        raise errors.SampleTrackerExportError(r.status_code)

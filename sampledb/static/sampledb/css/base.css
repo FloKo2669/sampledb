@@ -367,6 +367,10 @@ a.multiselect-submit[disabled] {
 .alert-danger .search-error {
     border-bottom: 2px solid #a94442;
 }
+.alert .fa.fa-arrow-down {
+    color: black;
+    opacity: 20%;
+}
 
 .search-error-full {
     font-family: monospace;
@@ -606,6 +610,23 @@ th:hover .search-helper {
 }
 .data_export_object_wrapper > input[disabled] ~ label:before {
     cursor: initial;
+}
+
+.multiple-objects-link.disabled {
+    pointer-events: none;
+    cursor: default;
+    color: #777;
+}
+#related_objects + .checkbox + #multiselect-button-container,
+#related_objects + .checkbox + #multiselect-button-container + #related-objects-container .data_export_object_wrapper {
+    display:none;
+}
+#multiselect-button-container {
+    margin-bottom: 8px;
+}
+#multiselect-button-container > button {
+    margin-bottom: 2px;
+    min-width: 153px;
 }
 
 .nav-search-link {

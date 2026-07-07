@@ -11,7 +11,6 @@ import typing
 import flask
 import flask_login
 import markupsafe
-import requests
 import werkzeug
 from flask_babel import _
 
@@ -35,9 +34,9 @@ from ...logic.location_permissions import get_locations_with_user_permissions
 from ...logic.languages import get_language_by_lang_code, get_language, get_languages, Language
 from ...logic.errors import UserDoesNotExistError
 from ...logic.components import get_component, check_component_exists
-from ...logic.federation.update import update_poke_component
 from ...logic.shares import add_object_share, update_object_share, get_share, ObjectShare, get_shares_for_object, merge_policies
-from ..utils import get_locations_form_data, get_location_name, get_search_paths, get_groups_form_data, parse_filter_id_params, build_modified_url
+from ..utils import get_locations_form_data, get_location_name, get_search_paths, get_groups_form_data, \
+    parse_filter_id_params, build_modified_url, LocationFormInformation, update_poke_component_with_error_handling
 from ...logic.utils import get_translated_text, relative_url_for
 from .forms import ObjectLocationAssignmentForm, UseInActionForm, GenerateLabelsForm, EditPermissionsForm, MultiObjectNewShareAccessForm
 from .permissions import get_object_if_current_user_has_read_permissions
@@ -112,11 +111,15 @@ def objects() -> FlaskResponseT:
         for action_type in all_action_types_including_fed_defaults
         if action_type.fed_id is None or action_type.fed_id < 0
     ]
-    all_actions = [
-        action
-        for action in all_actions_including_hidden
-        if not action.is_hidden
-    ]
+    all_actions = logic.actions.sort_actions_for_user(
+        actions=[
+            action
+            for action in all_actions_including_hidden
+            if not action.is_hidden
+        ],
+        user_id=flask_login.current_user.id,
+        sort_by_favorite=False
+    )
     search_paths, search_paths_by_action, search_paths_by_action_type = get_search_paths(
         actions=all_actions,
         action_types=all_action_types,
@@ -164,6 +167,7 @@ def objects() -> FlaskResponseT:
     implicit_action_type = None
     object_ids_str = flask.request.form.get('ids', flask.request.args.get('ids', ''))
     object_ids: typing.Optional[typing.Set[int]] = None
+    selected_object_ids: typing.List[int] = []
     if object_ids_str:
         try:
             object_ids = {
@@ -179,6 +183,7 @@ def objects() -> FlaskResponseT:
                 object_ids=list(object_ids or set())
             )
             db_objects.sort(key=lambda db_object: db_object.object_id)
+        selected_object_ids = list(object_ids or [])
         query_string = ''
         use_advanced_search = False
         must_use_advanced_search = False
@@ -200,6 +205,7 @@ def objects() -> FlaskResponseT:
         all_action_types = []
         filter_action_type_ids: typing.Optional[typing.List[int]] = []
         all_locations = []
+        all_location_filter_choices: typing.Sequence[LocationFormInformation] = []
         filter_location_ids: typing.Optional[typing.List[int]] = []
         filter_related_user_ids = None
         all_users = []
@@ -220,6 +226,9 @@ def objects() -> FlaskResponseT:
 
         show_filters = True
         all_locations = get_locations_with_user_permissions(flask_login.current_user.id, Permissions.READ)
+        all_location_filter_choices, _location_filter_choices = get_locations_form_data(
+            filter=lambda location: True
+        )
 
         valid_location_ids = [
             location.id
@@ -1135,8 +1144,31 @@ def objects() -> FlaskResponseT:
                             available_action_types.append(action_type)
                     tried_object_action_types.add(object_action.type_id)
 
+    selected_object_ids = [
+        object_id
+        for object_id in selected_object_ids
+        if object_id in objects_allowed_to_select
+    ]
+
     sorted_action_topics = []
     sorted_instrument_topics = []
+    user_favorite_action_ids = logic.favorites.get_user_favorite_action_ids(flask_login.current_user.id)
+    user_favorite_instrument_ids = logic.favorites.get_user_favorite_instrument_ids(flask_login.current_user.id)
+    favorite_filter_actions = [
+        action
+        for action in all_actions
+        if action.id in user_favorite_action_ids
+    ]
+    all_instruments = sorted(all_instruments, key=lambda instrument: (
+        0 if instrument.fed_id is None else 1,
+        get_translated_text(instrument.name).lower(),
+        instrument.id
+    ))
+    favorite_filter_instruments = [
+        instrument
+        for instrument in all_instruments
+        if instrument.id in user_favorite_instrument_ids
+    ]
     if not flask.current_app.config['DISABLE_TOPICS']:
         sorted_topics = logic.topics.get_topics()
         for topic in sorted_topics:
@@ -1199,6 +1231,7 @@ def objects() -> FlaskResponseT:
         all_action_types=all_action_types,
         filter_action_type_ids=filter_action_type_ids,
         all_locations=all_locations,
+        all_location_filter_choices=all_location_filter_choices,
         filter_location_ids=filter_location_ids,
         all_users=all_users,
         filter_related_user_ids=filter_related_user_ids,
@@ -1227,6 +1260,7 @@ def objects() -> FlaskResponseT:
         all_languages=all_languages,
         create_from_objects=create_from_objects,
         objects_allowed_to_select=objects_allowed_to_select,
+        selected_object_ids=selected_object_ids,
         available_action_types=available_action_types,
         use_in_action_type=use_in_action_type,
         favorite_actions=favorite_actions,
@@ -1250,6 +1284,10 @@ def objects() -> FlaskResponseT:
         projects_treepicker_info=projects_treepicker_info,
         sorted_action_topics=sorted_action_topics,
         sorted_instrument_topics=sorted_instrument_topics,
+        user_favorite_action_ids=user_favorite_action_ids,
+        user_favorite_instrument_ids=user_favorite_instrument_ids,
+        favorite_filter_actions=favorite_filter_actions,
+        favorite_filter_instruments=favorite_filter_instruments,
     )
 
 
@@ -2002,14 +2040,7 @@ def multiselect_share() -> FlaskResponseT:
             share = get_share(object_id, component_id)
             merged_policy = merge_policies(share.policy, policy)
             update_object_share(object_id, component_id, merged_policy, user_id=flask_login.current_user.id)
-    try:
-        update_poke_component(component)
-    except logic.errors.MissingComponentAddressError:
-        flask.flash(_('Unable to contact %(component_name)s. Missing database address.', component_name=component.get_name()), 'warning')
-    except logic.errors.NoAuthenticationMethodError:
-        flask.flash(_('No valid authentication method configured for %(component_name)s (%(component_address)s).', component_name=component.get_name(), component_address=component.address), 'warning')
-    except requests.ConnectionError:
-        flask.flash(_('Unable to contact %(component_name)s (%(component_address)s).', component_name=component.get_name(), component_address=component.address), 'warning')
+    update_poke_component_with_error_handling(component)
     for object_id in object_ids:
         background_tasks.post_trigger_object_permissions_webhooks(object_id)
     flask.flash(_("Successfully shared objects with %(component_name)s.", component_name=component.get_name()), 'success')

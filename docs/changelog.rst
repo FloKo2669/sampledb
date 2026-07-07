@@ -10,8 +10,10 @@ Currently in development.
 - Allow selecting object references by object ID or object link/url, not requiring READ permission
 - Allow inputting object IDs or object links for object reference fields
 - Allow showing or hiding of outdated relations in workflow views
+- Added default permissions for other databases to user preferences
 - Added support for external links to the objects list
 - Added support for sharing with other databases to the objects list
+- Added buttons for multiple object interactions to related objects tree
 - Added filtering by object IDs and related_user_id to HTTP API objects endpoint
 - Added tree picker to location form
 - Improved .eln file support

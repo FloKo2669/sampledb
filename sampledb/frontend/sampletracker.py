@@ -32,7 +32,7 @@ def sampletracker(object_id: int) -> FlaskResponseT:
 
     if sampletracker_export_form.validate_on_submit():
         try:
-            logic.sampletracker.export_object(
+            message = logic.sampletracker.export_object(
                 object_id=object.id,
                 version_id=object.version_id,
                 user_id=flask_login.current_user.id,
@@ -40,7 +40,7 @@ def sampletracker(object_id: int) -> FlaskResponseT:
                 experiment_session=sampletracker_export_form.experiment_session.data,
             )
             flask.flash(
-                _('Successfully exported object to Sample Tracker.'), 'success')
+                message, 'success')
         except logic_errors.SampleTrackerNotReachableError:
             flask.flash(
                 _('Sample Tracker could not be reached. Please try again later.'), 'error')

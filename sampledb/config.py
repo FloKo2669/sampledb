@@ -862,15 +862,15 @@ SQLALCHEMY_ENGINE_OPTIONS = {'connect_args': {"options": "-c timezone=utc"}}
 # sources for dynamc choices
 DYNAMIC_CHOICES_SOURCES = {
     'expSessions': {
-        'url': 'http://flask_app:5000/exp-sessions',
+        'url': 'http://flask_app:7000/exp-sessions',
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     },
     "proposals": {
-        'url': 'http://flask_app:5000/proposals',
+        'url': 'http://flask_app:7000/proposals',
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     }
 }
-SAMPLETRACKER_API_URL = 'http://flask_app:5000/export'
+SAMPLETRACKER_API_URL = 'http://sampletracker-next-generation-backend-1:5000/api/samples/ingest'
 
 # LDAP settings
 LDAP_NAME = None

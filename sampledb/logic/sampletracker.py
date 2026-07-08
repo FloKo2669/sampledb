@@ -47,6 +47,11 @@ def export_object(
 
     if r.status_code not in {200, 201}:
         raise errors.SampleTrackerExportError(r.status_code)
-    
 
     send_to_sampletracker(user_id=user_id, object_id=object_id, version_id=version_id, proposal=proposal, experiment_session=experiment_session)
+
+    try:
+        return r.json().get('message', 'Export completed.')
+    except ValueError:
+        # response wasn't valid JSON
+        return 'Export completed.'

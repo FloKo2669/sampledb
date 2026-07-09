@@ -108,6 +108,8 @@ def validate_schema(
         return _validate_timeseries_schema(schema, path, all_language_codes=all_language_codes, strict=strict)
     elif schema['type'] == 'file':
         return _validate_file_schema(schema, path, all_language_codes=all_language_codes, strict=strict)
+    elif schema['type'] == 'external_validator':
+        return _validate_external_validator_schema(schema, path, all_language_codes=all_language_codes, strict=strict)
     else:
         raise ValidationError('invalid type', path)
 
@@ -1235,4 +1237,74 @@ def _validate_file_schema(
             raise ValidationError('extensions must be a list of file extensions', path)
     if 'preview' in schema and not isinstance(schema['preview'], bool):
         raise ValidationError('preview must be a list of file extensions', path)
+    _validate_note_in_schema(schema, path, all_language_codes=all_language_codes, strict=strict)
+
+
+def _validate_external_validator_schema(
+        schema: typing.Dict[str, typing.Any],
+        path: typing.List[str],
+        *,
+        all_language_codes: typing.Set[str],
+        strict: bool
+) -> None:
+    """
+    Validates the given external_validator object schema and raises a ValidationError if it is invalid.
+
+    An external_validator field renders as a free-text input with a button that sends the entered
+    value to a configured external HTTP endpoint for validation or transformation. The response is
+    reflected back into the stored data.
+
+    :param schema: the sampledb object schema
+    :param path: the path to this subschema
+    :param all_language_codes: the set of existing language codes
+    :param strict: whether to apply strict validation rules
+    :raise ValidationError: if the schema is invalid.
+    """
+    valid_keys = {
+        'type', 'title', 'url', 'request_field', 'response_valid_field',
+        'response_value_field', 'placeholder', 'button_label', 'note',
+        'dataverse_export', 'scicat_export', 'conditions', 'may_copy', 'style', 'tooltip',
+    }
+    required_keys = {'type', 'title', 'url'}
+    schema_keys = set(schema.keys())
+    invalid_keys = schema_keys - valid_keys
+    if invalid_keys:
+        raise ValidationError(f'unexpected keys in schema: {invalid_keys}', path)
+    missing_keys = required_keys - schema_keys
+    if missing_keys:
+        raise ValidationError(f'missing keys in schema: {missing_keys}', path)
+
+    if not isinstance(schema['url'], str):
+        raise ValidationError('url must be a string', path)
+    parsed = urllib.parse.urlparse(schema['url'])
+    if parsed.scheme not in ('http', 'https'):
+        raise ValidationError('url must use http or https scheme', path)
+    if not parsed.netloc:
+        raise ValidationError('url must have a valid host', path)
+
+    for key in ('request_field', 'response_valid_field', 'response_value_field'):
+        if key in schema and not isinstance(schema[key], str):
+            raise ValidationError(f'{key} must be a string', path)
+        if key in schema and not schema[key]:
+            raise ValidationError(f'{key} must not be empty', path)
+
+    for key in ('placeholder', 'button_label'):
+        if key not in schema:
+            continue
+        if not isinstance(schema[key], str) and not isinstance(schema[key], dict):
+            raise ValidationError(f'{key} must be str or dict', path)
+        if isinstance(schema[key], dict):
+            if 'en' not in schema[key]:
+                raise ValidationError(f'{key} must include an english translation', path)
+            for lang_code in schema[key]:
+                if lang_code not in all_language_codes:
+                    raise ValidationError(f'{key} must only contain known language codes', path)
+            for text in schema[key].values():
+                if not isinstance(text, str):
+                    raise ValidationError(f'{key} must only contain text values', path)
+
+    if 'dataverse_export' in schema and not isinstance(schema['dataverse_export'], bool):
+        raise ValidationError('dataverse_export must be True or False', path)
+    if 'scicat_export' in schema and not isinstance(schema['scicat_export'], bool):
+        raise ValidationError('scicat_export must be True or False', path)
     _validate_note_in_schema(schema, path, all_language_codes=all_language_codes, strict=strict)

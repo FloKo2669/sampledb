@@ -90,6 +90,7 @@ def convert_to_schema(
             'user',
             'file',
             'plotly_chart',
+            'external_validator',
     ):
         return data, []
 

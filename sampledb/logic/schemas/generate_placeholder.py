@@ -95,6 +95,8 @@ def generate_placeholder(
         return _generate_timeseries_placeholder(schema, path)
     elif schema['type'] == 'file':
         return _generate_file_placeholder(schema, path)
+    elif schema['type'] == 'external_validator':
+        return None
     else:
         raise SchemaError('invalid type', path)
 

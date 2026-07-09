@@ -81,6 +81,8 @@ def validate(
         return _validate_timeseries(instance, schema, path)
     elif schema['type'] == 'file' and isinstance(instance, dict):
         return _validate_file(instance, schema, path, file_names_by_id=file_names_by_id)
+    elif schema['type'] == 'external_validator' and isinstance(instance, dict):
+        return _validate_external_validator(instance, schema, path)
     else:
         raise ValidationError('invalid type', path)
 
@@ -916,6 +918,40 @@ def _validate_file(
                     break
             else:
                 raise ValidationError(f'file name should have one of these extensions: {", ".join(schema["extensions"])}', path)
+
+
+def _validate_external_validator(
+        instance: typing.Dict[str, typing.Any],
+        schema: typing.Dict[str, typing.Any],
+        path: typing.List[str]
+) -> None:
+    """
+    Validates the given instance against the external_validator schema.
+
+    :param instance: the sampledb object instance
+    :param schema: the valid sampledb external_validator schema
+    :param path: the path to this subinstance
+    :raise ValidationError: if the instance is invalid.
+    """
+    if not isinstance(instance, dict):
+        raise ValidationError('instance must be dict', path)
+    valid_keys = {'_type', 'text', 'is_valid', 'validated_text'}
+    required_keys = {'_type', 'text'}
+    instance_keys = set(instance.keys())
+    invalid_keys = instance_keys - valid_keys - OPT_IMPORT_KEYS
+    if invalid_keys:
+        raise ValidationError(f'unexpected keys in instance: {invalid_keys}', path)
+    missing_keys = required_keys - instance_keys
+    if missing_keys:
+        raise ValidationError(f'missing keys in instance: {missing_keys}', path)
+    if instance['_type'] != 'external_validator':
+        raise ValidationError('expected _type "external_validator"', path)
+    if not isinstance(instance['text'], str):
+        raise ValidationError('text must be str', path)
+    if 'is_valid' in instance and not isinstance(instance['is_valid'], bool):
+        raise ValidationError('is_valid must be bool', path)
+    if 'validated_text' in instance and not isinstance(instance['validated_text'], str):
+        raise ValidationError('validated_text must be str', path)
 
 
 def validate_eln_urls(

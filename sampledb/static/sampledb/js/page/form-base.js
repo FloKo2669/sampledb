@@ -35,6 +35,10 @@ import {
   updateSelectLanguage
 } from '../object_form/text.js';
 
+import {
+  setupExternalValidatorButtons
+} from '../object_form/external_validator.js';
+
 window.mdeFields = [];
 window.initPhase = true;
 let fileNamesByID = {};

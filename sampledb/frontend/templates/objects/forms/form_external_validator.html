@@ -1,0 +1,5 @@
+{% extends get_form_property_template(schema, container_style) %}
+
+{% block property_field %}
+  {% include "objects/fields/external_validator_field.html" %}
+{% endblock %}

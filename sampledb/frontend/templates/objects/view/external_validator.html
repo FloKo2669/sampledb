@@ -1,0 +1,5 @@
+{% extends get_view_property_template(schema, container_style) %}
+
+{% block property_field %}
+  {% include "objects/values/external_validator_value.html" %}
+{% endblock %}

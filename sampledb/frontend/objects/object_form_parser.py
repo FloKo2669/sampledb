@@ -105,6 +105,8 @@ def parse_any_form_data(
         return parse_timeseries_form_data(form_data, schema, id_prefix, errors, required=required, file_names_by_id=file_names_by_id, previous_data=previous_data)
     elif schema.get('type') == 'file':
         return parse_file_form_data(form_data, schema, id_prefix, errors, required=required, file_names_by_id=file_names_by_id, previous_data=previous_data)
+    elif schema.get('type') == 'external_validator':
+        return parse_external_validator_form_data(form_data, schema, id_prefix, errors, required=required, file_names_by_id=file_names_by_id, previous_data=previous_data)
     raise ValueError('invalid schema')
 
 
@@ -751,6 +753,40 @@ def parse_file_form_data(
         'file_id': file_id
     }
     schemas.validate(data, schema, strict=True, file_names_by_id=file_names_by_id)
+    return data
+
+
+@form_data_parser
+def parse_external_validator_form_data(
+        form_data: typing.Dict[str, typing.List[str]],
+        schema: typing.Dict[str, typing.Any],
+        id_prefix: str,
+        errors: typing.Dict[str, str],
+        *,
+        file_names_by_id: typing.Dict[int, str],
+        required: bool = False,
+        previous_data: typing.Optional[typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Any]]] = None
+) -> typing.Optional[typing.Dict[str, typing.Any]]:
+    text_list = form_data.get(id_prefix + '__text', [])
+    text = text_list[0] if text_list else None
+    if not text and not required:
+        return None
+    if text is None:
+        text = ''
+    data: typing.Dict[str, typing.Any] = {
+        '_type': 'external_validator',
+        'text': str(text),
+    }
+    is_valid_str = (form_data.get(id_prefix + '__is_valid') or [''])[0]
+    if is_valid_str == 'true':
+        data['is_valid'] = True
+    elif is_valid_str == 'false':
+        data['is_valid'] = False
+    validated_text_list = form_data.get(id_prefix + '__validated_text', [])
+    validated_text = validated_text_list[0] if validated_text_list else None
+    if validated_text:
+        data['validated_text'] = str(validated_text)
+    schemas.validate(data, schema, strict=True)
     return data
 
 

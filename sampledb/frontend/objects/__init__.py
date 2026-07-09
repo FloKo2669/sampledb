@@ -1,4 +1,5 @@
 from . import automatic_schema_updates
+from . import external_validator
 from . import files
 from . import forms
 from . import objects
@@ -12,6 +13,7 @@ from . import view
 
 __all__ = [
     'automatic_schema_updates',
+    'external_validator',
     'files',
     'forms',
     'objects',

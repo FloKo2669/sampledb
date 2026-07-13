@@ -1,10 +1,11 @@
-'use strict';
-/* eslint-env browser */
-
 /**
  * Handle Validate button clicks for all external_validator fields via event
- * delegation.  This automatically covers fields that are added dynamically
+ * delegation. This automatically covers fields that are added dynamically
  * (e.g. inside array containers).
+ *
+ * NOTE: this only provides instant feedback while editing. It is not the
+ * authoritative check -- the server re-validates via the same external
+ * service when the object is actually saved, ignoring these hidden inputs.
  */
 async function handleExternalValidatorClick (e) {
   const button = e.target.closest('[data-external-validator-trigger]');
@@ -19,13 +20,12 @@ async function handleExternalValidatorClick (e) {
   const validatedTextInput = container.querySelector('[data-external-validator-validated-text]');
   const statusDiv = container.querySelector('[data-external-validator-status]');
 
-  const actionId = button.dataset.actionId || '';
-  const idPrefix = button.dataset.idPrefix || '';
+  const validator = button.dataset.validator || '';
   const text = textInput ? textInput.value : '';
 
-  // Retrieve the CSRF token from the WTF hidden input on the page
   const csrfTokenEl = document.querySelector('input[name="csrf_token"]');
   const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+  const applicationRootPath = window.getTemplateValue('application_root_path');
 
   button.disabled = true;
   if (statusDiv) {
@@ -34,12 +34,11 @@ async function handleExternalValidatorClick (e) {
 
   try {
     const body = new FormData();
-    body.append('action_id', actionId);
-    body.append('id_prefix', idPrefix);
+    body.append('validator', validator);
     body.append('text', text);
     body.append('csrf_token', csrfToken);
 
-    const response = await fetch('/objects/external_validator_proxy', {
+    const response = await fetch(applicationRootPath + 'objects/external_validator_proxy', {
       method: 'POST',
       body: body
     });
@@ -58,7 +57,6 @@ async function handleExternalValidatorClick (e) {
     if (isValidInput) isValidInput.value = result.valid ? 'true' : 'false';
     if (validatedTextInput) validatedTextInput.value = result.validated_text || '';
 
-    // Update the text input with the normalised value when validation succeeds
     if (result.valid && result.validated_text && textInput) {
       textInput.value = result.validated_text;
     }
@@ -82,12 +80,31 @@ async function handleExternalValidatorClick (e) {
   }
 }
 
+/**
+ * Clear any previous (now stale) validation result whenever the text changes,
+ * so the UI never shows a "Valid" checkmark for text that hasn't actually
+ * been re-checked.
+ */
+function handleExternalValidatorInput (e) {
+  const textInput = e.target.closest('[data-external-validator-input]');
+  if (!textInput) return;
+  const container = textInput.closest('[data-external-validator-container]');
+  if (!container) return;
+  const isValidInput = container.querySelector('[data-external-validator-is-valid]');
+  const validatedTextInput = container.querySelector('[data-external-validator-validated-text]');
+  const statusDiv = container.querySelector('[data-external-validator-status]');
+  if (isValidInput) isValidInput.value = '';
+  if (validatedTextInput) validatedTextInput.value = '';
+  if (statusDiv) statusDiv.innerHTML = '';
+}
+
 function setupExternalValidatorButtons () {
-  // Use event delegation so dynamically added fields (e.g. inside arrays) work too
   document.removeEventListener('click', handleExternalValidatorClick);
   document.addEventListener('click', handleExternalValidatorClick);
+  document.removeEventListener('input', handleExternalValidatorInput);
+  document.addEventListener('input', handleExternalValidatorInput);
 }
 
 document.addEventListener('DOMContentLoaded', setupExternalValidatorButtons);
 
-export { setupExternalValidatorButtons };
+export { setupExternalValidatorButtons, handleExternalValidatorClick, handleExternalValidatorInput };

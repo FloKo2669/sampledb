@@ -572,3 +572,10 @@ class AutomaticSchemaUpdateAlreadyInProgressError(Exception):
 
 class AutomaticSchemaUpdateDoesNotExistError(Exception):
     pass
+
+class ExternalValidatorNotConfiguredError(Exception):
+    pass
+
+
+class ExternalValidatorConnectionError(Exception):
+    pass

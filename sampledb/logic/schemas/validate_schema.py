@@ -1251,8 +1251,8 @@ def _validate_external_validator_schema(
     Validates the given external_validator object schema and raises a ValidationError if it is invalid.
 
     An external_validator field renders as a free-text input with a button that sends the entered
-    value to a configured external HTTP endpoint for validation or transformation. The response is
-    reflected back into the stored data.
+    value to a named validator configured in SampleDB before startup. The response is reflected
+    back into the stored data.
 
     :param schema: the sampledb object schema
     :param path: the path to this subschema
@@ -1261,11 +1261,10 @@ def _validate_external_validator_schema(
     :raise ValidationError: if the schema is invalid.
     """
     valid_keys = {
-        'type', 'title', 'url', 'request_field', 'response_valid_field',
-        'response_value_field', 'placeholder', 'button_label', 'note',
+        'type', 'title', 'validator', 'placeholder', 'button_label', 'note',
         'dataverse_export', 'scicat_export', 'conditions', 'may_copy', 'style', 'tooltip',
     }
-    required_keys = {'type', 'title', 'url'}
+    required_keys = {'type', 'title', 'validator'}
     schema_keys = set(schema.keys())
     invalid_keys = schema_keys - valid_keys
     if invalid_keys:
@@ -1274,19 +1273,10 @@ def _validate_external_validator_schema(
     if missing_keys:
         raise ValidationError(f'missing keys in schema: {missing_keys}', path)
 
-    if not isinstance(schema['url'], str):
-        raise ValidationError('url must be a string', path)
-    parsed = urllib.parse.urlparse(schema['url'])
-    if parsed.scheme not in ('http', 'https'):
-        raise ValidationError('url must use http or https scheme', path)
-    if not parsed.netloc:
-        raise ValidationError('url must have a valid host', path)
-
-    for key in ('request_field', 'response_valid_field', 'response_value_field'):
-        if key in schema and not isinstance(schema[key], str):
-            raise ValidationError(f'{key} must be a string', path)
-        if key in schema and not schema[key]:
-            raise ValidationError(f'{key} must not be empty', path)
+    if not isinstance(schema['validator'], str):
+        raise ValidationError('validator must be a string', path)
+    if not schema['validator']:
+        raise ValidationError('validator must not be empty', path)
 
     for key in ('placeholder', 'button_label'):
         if key not in schema:

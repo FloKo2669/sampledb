@@ -95,6 +95,7 @@ def parse_configuration_values() -> None:
         'LABEL_PAPER_FORMATS',
         'DEFAULT_NOTIFICATION_MODES',
         'EXTERNAL_LINKS',
+        'EXTERNAL_VALIDATORS',
     ]:
         value = globals().get(config_name)
         if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
@@ -275,6 +276,46 @@ def is_default_notification_modes_valid() -> bool:
         valid_modes = [notification_mode.name.upper() for notification_mode in NotificationMode]
         if value not in valid_modes:
             print(ansi_color(f'DEFAULT_NOTIFICATION_MODES values must be one of {valid_modes!r}, but got {value!r}.\n', color=31))
+            return False
+    return True
+
+
+def is_external_validators_valid(
+        external_validators: typing.Any = None
+) -> bool:
+    """
+    Check if the external validator config dict is valid.
+    """
+    if external_validators is None:
+        external_validators = EXTERNAL_VALIDATORS
+    if not isinstance(external_validators, dict):
+        print(ansi_color(f'EXTERNAL_VALIDATORS must be dict, but got {type(external_validators)}.\n', color=31))
+        return False
+    for validator_name, validator_config in external_validators.items():
+        if not isinstance(validator_name, str) or not validator_name:
+            print(ansi_color(f'EXTERNAL_VALIDATORS keys must be non-empty strings, but got {validator_name!r}.\n', color=31))
+            return False
+        if not isinstance(validator_config, dict):
+            print(ansi_color(f'EXTERNAL_VALIDATORS values must be dicts, but got {validator_config!r} for {validator_name!r}.\n', color=31))
+            return False
+        valid_keys = {'url', 'request_field', 'response_valid_field', 'response_value_field', 'response_message_field'}
+        unexpected_keys = set(validator_config.keys()) - valid_keys
+        if unexpected_keys:
+            print(ansi_color(f'EXTERNAL_VALIDATORS[{validator_name!r}] contains unexpected keys {unexpected_keys!r}.\n', color=31))
+            return False
+        if not isinstance(validator_config.get('url'), str) or not validator_config['url']:
+            print(ansi_color(f'EXTERNAL_VALIDATORS[{validator_name!r}]["url"] must be a non-empty string.\n', color=31))
+            return False
+        parsed_url = requests.utils.urlparse(validator_config['url'])
+        if parsed_url.scheme not in ('http', 'https') or not parsed_url.netloc:
+            print(ansi_color(f'EXTERNAL_VALIDATORS[{validator_name!r}]["url"] must be a valid http or https URL.\n', color=31))
+            return False
+        for key in ('request_field', 'response_valid_field', 'response_value_field'):
+            if key in validator_config and (not isinstance(validator_config[key], str) or not validator_config[key]):
+                print(ansi_color(f'EXTERNAL_VALIDATORS[{validator_name!r}][{key!r}] must be a non-empty string.\n', color=31))
+                return False
+        if 'response_message_field' in validator_config and (not isinstance(validator_config['response_message_field'], str) or not validator_config['response_message_field']):
+            print(ansi_color(f'EXTERNAL_VALIDATORS[{validator_name!r}]["response_message_field"] must be a non-empty string.\n', color=31))
             return False
     return True
 
@@ -822,6 +863,10 @@ def check_config(
         can_run = False
         show_config_info = True
 
+    if not is_external_validators_valid(config.get('EXTERNAL_VALIDATORS')):
+        can_run = False
+        show_config_info = True
+
     if config['OIDC_CREATE_ACCOUNT'] not in ('no', 'deny_existing', 'auto_link'):
         can_run = False
         show_config_info = True
@@ -870,6 +915,17 @@ DYNAMIC_CHOICES_SOURCES = {
         'headers': {'Authorization': 'Bearer YOUR_TOKEN'},
     }
 }
+
+# server-side validator endpoints referenced by external_validator schema fields
+# using the field's "validator" key. Configure these before startup.
+EXTERNAL_VALIDATORS: typing.Dict[str, typing.Dict[str, str]] = {}
+EXTERNAL_VALIDATORS['formulaValidator'] = {
+    'url': 'http://sampletracker-next-generation-backend-1:5000/api/formula/validate',
+    'request_field': 'formula',
+    'response_valid_field': 'is_valid',
+    'response_value_field': 'result',
+}
+
 SAMPLETRACKER_API_URL = 'http://sampletracker-next-generation-backend-1:5000/api/samples/ingest'
 
 # LDAP settings

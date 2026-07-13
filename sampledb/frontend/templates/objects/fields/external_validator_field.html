@@ -17,8 +17,7 @@
         type="button"
         class="btn btn-default"
         data-external-validator-trigger
-        data-action-id="{{ action_id if action_id is defined else '' }}"
-        data-id-prefix="{{ id_prefix }}"
+        data-validator="{{ schema.validator }}"
       >
         {% if schema.button_label %}
           {{ schema.button_label | get_translated_text }}

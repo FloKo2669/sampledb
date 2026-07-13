@@ -767,26 +767,21 @@ def parse_external_validator_form_data(
         required: bool = False,
         previous_data: typing.Optional[typing.Union[typing.Dict[str, typing.Any], typing.List[typing.Any]]] = None
 ) -> typing.Optional[typing.Dict[str, typing.Any]]:
-    text_list = form_data.get(id_prefix + '__text', [])
+    text_list = form_data.get(id_prefix + '___text', [])
     text = text_list[0] if text_list else None
-    if not text and not required:
-        return None
-    if text is None:
-        text = ''
+    if not text:
+        if not required:
+            return None
+        raise ValueError(_('This field is required.'))
     data: typing.Dict[str, typing.Any] = {
         '_type': 'external_validator',
-        'text': str(text),
+        'text': str(text)
     }
-    is_valid_str = (form_data.get(id_prefix + '__is_valid') or [''])[0]
-    if is_valid_str == 'true':
-        data['is_valid'] = True
-    elif is_valid_str == 'false':
-        data['is_valid'] = False
-    validated_text_list = form_data.get(id_prefix + '__validated_text', [])
-    validated_text = validated_text_list[0] if validated_text_list else None
-    if validated_text:
-        data['validated_text'] = str(validated_text)
-    schemas.validate(data, schema, strict=True)
+    try:
+        schemas.validate(data, schema, strict=True)
+    except ValidationError as e:
+        errors[id_prefix + '___text'] = str(e)
+        return None
     return data
 
 

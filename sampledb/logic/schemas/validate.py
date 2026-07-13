@@ -16,9 +16,9 @@ from flask_babel import _
 import flask
 
 from .conditions import are_conditions_fulfilled
-from .. import actions, errors, objects, datatypes, users, languages
+from .. import actions, errors, objects, datatypes, users, languages, external_validation
 from ...models import ActionType
-from ..errors import ObjectDoesNotExistError, ValidationError, ValidationMultiError, UserDoesNotExistError, InvalidURLError
+from ..errors import ObjectDoesNotExistError, ValidationError, ValidationMultiError, UserDoesNotExistError, InvalidURLError,  ExternalValidatorNotConfiguredError, ExternalValidatorConnectionError
 from .utils import units_are_valid
 from ..utils import get_translated_text, parse_url
 from ..units import get_dimensionality_for_units, get_magnitude_in_base_units, get_old_dimensionality
@@ -926,16 +926,18 @@ def _validate_external_validator(
         path: typing.List[str]
 ) -> None:
     """
-    Validates the given instance against the external_validator schema.
+    Validates the given instance against the external_validator schema and
+    performs the actual external validation call.
 
     :param instance: the sampledb object instance
     :param schema: the valid sampledb external_validator schema
     :param path: the path to this subinstance
-    :raise ValidationError: if the instance is invalid.
+    :raise ValidationError: if the instance is invalid or was rejected by the
+        external validator, or if the validator could not be reached.
     """
     if not isinstance(instance, dict):
         raise ValidationError('instance must be dict', path)
-    valid_keys = {'_type', 'text', 'is_valid', 'validated_text'}
+    valid_keys = {'_type', 'text', 'validated_text'}
     required_keys = {'_type', 'text'}
     instance_keys = set(instance.keys())
     invalid_keys = instance_keys - valid_keys - OPT_IMPORT_KEYS
@@ -948,10 +950,22 @@ def _validate_external_validator(
         raise ValidationError('expected _type "external_validator"', path)
     if not isinstance(instance['text'], str):
         raise ValidationError('text must be str', path)
-    if 'is_valid' in instance and not isinstance(instance['is_valid'], bool):
-        raise ValidationError('is_valid must be bool', path)
-    if 'validated_text' in instance and not isinstance(instance['validated_text'], str):
-        raise ValidationError('validated_text must be str', path)
+
+    try:
+        result = external_validation.run_external_validation(schema['validator'], instance['text'])
+    except ExternalValidatorNotConfiguredError:
+        raise ValidationError(f'external validator "{schema["validator"]}" is not configured', path)
+    except ExternalValidatorConnectionError as exc:
+        raise ValidationError(str(exc), path)
+
+    if not result.is_valid:
+        raise ValidationError(result.message or _('The entered text was rejected by the external validator.'), path)
+
+    # store the normalised value the service returned; ignore anything the client submitted
+    if result.validated_text is not None:
+        instance['validated_text'] = result.validated_text
+    elif 'validated_text' in instance:
+        del instance['validated_text']
 
 
 def validate_eln_urls(

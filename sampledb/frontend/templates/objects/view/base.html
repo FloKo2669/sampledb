@@ -1340,6 +1340,8 @@
               {% if 'version_id' in object_log_entry.data %}
                 {% set ns.object_log_entry_view_html = _('<a href="%(view_version_url)s">View&nbsp;Version</a>&nbsp;/&nbsp;<a href="%(view_version_url_with_diff)s">View&nbsp;Changes</a>', view_version_url=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id']),view_version_url_with_diff=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['version_id'], diff='')) %}
               {% endif %}
+              {% set ns.object_log_entry_external_url = object_log_entry.data['link'] %}
+              {% set ns.object_log_entry_external_url_label = _('View Activation Data') %}
           {% elif object_log_entry.type == ObjectLogEntryType.RESTORE_OBJECT_VERSION %}
             {% set ns.object_log_entry_message = _('%(user_ref)s restored object <a href="%(version_url)s">version #%(version_id)s</a>.', user_ref=user_reference(object_log_entry.user), version_url=url_for('.object_version', object_id=object_id, version_id=object_log_entry.data['restored_version_id']), version_id=object_log_entry.data['restored_version_id']) %}
             {% if 'version_id' in object_log_entry.data %}
@@ -1479,7 +1481,10 @@
               {% else %}
                 {% if ns.object_log_entry_view_url %}
                   <a href="{{ ns.object_log_entry_view_url }}">{{ _('View') }}</a>
+                  {% endif %}
                 {% endif %}
+              {% if ns.object_log_entry_external_url %}
+                <a href="{{ ns.object_log_entry_external_url }}">{{ ns.object_log_entry_external_url_label }}</a>
               {% endif %}
             </td>
           </tr>
